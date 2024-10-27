@@ -1,99 +1,47 @@
 const express = require('express');
 const cors = require('cors');
+const simplexLP = require('./simplexLP');
+const nonLinearOptimization = require('./nonLinearOptimization');
+const convexOptimization = require('./convexOptimization');
 const app = express();
-const port = 3001;
+const port = 3001;   
 
 app.use(cors());
 app.use(express.json());
 
-// Define the root route for a basic message
+// root route for a basic message
 app.get('/', (req, res) => {
     res.send('Server is running. Use /api/calculate for calculations.');
 });
 
-// Simplex LP calculation logic (for example)
-function simplexLP(A, B, C) {
-    const numRows = A.length;
-    const numCols = A[0].length;
-
-    let Matrix = [];
-    for (let i = 0; i < numRows; i++) {
-        let row = A[i].concat(Array(numRows).fill(0));
-        row[i + numCols] = 1;
-        row.push(B[i]);
-        Matrix.push(row);
-    }
-
-    let lastRow = C.map(c => -c).concat(Array(numRows + 1).fill(0));
-    Matrix.push(lastRow);
-
-    const findPivotColumn = () => {
-        let pivotCol = Matrix[numRows].indexOf(Math.min(...Matrix[numRows].slice(0, numCols)));
-        return pivotCol >= 0 && Matrix[numRows][pivotCol] < 0 ? pivotCol : -1;
-    };
-
-    const findPivotRow = (pivotCol) => {
-        let ratios = [];
-        for (let i = 0; i < numRows; i++) {
-            if (Matrix[i][pivotCol] > 0) {
-                ratios.push(Matrix[i][numCols + numRows] / Matrix[i][pivotCol]);
-            } else {
-                ratios.push(Infinity);
-            }
-        }
-        let minRatio = Math.min(...ratios);
-        return minRatio === Infinity ? -1 : ratios.indexOf(minRatio);
-    };
-
-    while (true) {
-        let pivotCol = findPivotColumn();
-        if (pivotCol === -1) break;
-
-        let pivotRow = findPivotRow(pivotCol);
-        if (pivotRow === -1) throw new Error("Unbounded solution");
-
-        let pivotElement = Matrix[pivotRow][pivotCol];
-        for (let j = 0; j < Matrix[0].length; j++) {
-            Matrix[pivotRow][j] /= pivotElement;
-        }
-
-        for (let i = 0; i <= numRows; i++) {
-            if (i !== pivotRow) {
-                let factor = Matrix[i][pivotCol];
-                for (let j = 0; j < Matrix[i].length; j++) {
-                    Matrix[i][j] -= factor * Matrix[pivotRow][j];
-                }
-            }
-        }
-    }
-
-    let optimal = Array(numCols).fill(0);
-    for (let i = 0; i < numCols; i++) {
-        let col = Matrix.map(row => row[i]);
-        if (col.filter(x => x === 1).length === 1 && col.filter(x => x === 0).length === numRows) {
-            let rowIndex = col.indexOf(1);
-            optimal[i] = Matrix[rowIndex][numCols + numRows];
-        }
-    }
-
-    let slack = Array(numRows).fill(0);
-    for (let i = numCols; i < numCols + numRows; i++) {
-        let col = Matrix.map(row => row[i]);
-        if (col.filter(x => x === 1).length === 1 && col.filter(x => x === 0).length === numRows) {
-            let rowIndex = col.indexOf(1);
-            slack[i - numCols] = Matrix[rowIndex][numCols + numRows];
-        }
-    }
-
-    let value = Matrix[numRows][numCols + numRows];
-
-    return { optimal, slack, value };
-}
-
 app.post('/api/calculate', (req, res) => {
-    const { A, B, C } = req.body;
+    const { A, B, C } = req.body; // inputs for linear optimization
     try {
-        const result = simplexLP(A, B, C);
+        const result = simplexLP(A, B, C); // linear optimization logic
+        res.json(result);
+    } catch (error) {
+        res.status(400).json({ error: error.message });
+    }
+});
+
+app.post('/api/calculateNonLinear', (req, res) => {
+    const { X } = req.body; // inputs for non-linear optimization
+    try {
+        const result = nonLinearOptimization(X); // non-linear optimization logic using gradient descent
+        res.json(result);
+    } catch (error) {
+        res.status(400).json({ error: error.message });
+    }
+});
+
+app.post('/api/calculateConvex', (req, res) => {
+    const { x0 } = req.body; // Initial guess for convex optimization
+    const f = (x) => x.reduce((sum, xi) => sum + xi ** 2, 0); // Example convex function: f(x) = x^2
+    const gradF = (x) => x.map(xi => 2 * xi); // Gradient of f(x) = x^2
+    const hessianF = (x) => Array(x.length).fill().map((_, i) => Array(x.length).fill().map((_, j) => i === j ? 2 : 0)); // Hessian of f(x) = x^2
+
+    try {
+        const result = convexOptimization(f, gradF, hessianF, x0); // Convex optimization logic using Newton's method
         res.json(result);
     } catch (error) {
         res.status(400).json({ error: error.message });
@@ -101,5 +49,5 @@ app.post('/api/calculate', (req, res) => {
 });
 
 app.listen(port, () => {
-    console.log(`Simplex LP Calculator backend listening at http://localhost:${port}`);
+    console.log(`Optimization backend listening at http://localhost:${port}`);
 });

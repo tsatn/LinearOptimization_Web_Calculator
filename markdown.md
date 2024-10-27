@@ -53,15 +53,17 @@ npm install vue-router@next
 npm install vue-router@next
 
 **Main Functions**
-1. Simplex LP Logic in Java (index.js)
+1. 
+Simplex LP Logic in Java (index.js)
 - Create a service class in Java to implement the Simplex LP logic. 
 - SimplexService performs the simplex algorithm
 - SimplexResult: helper class to hold the result (optimal solution, slack variables, and the objective value).
 
 **Running the program**
-1. Run backend on vscode: node index.js, such that we have backend listening at http://localhost:5001
+1. Run backend on vscode: node index.js, such that we have backend listening at http://localhost:3001
    
-2. (Method 1) Run cURL on Terminal to make a POST request on the Terminal directly: type command with /api/calculate: 
+2. 
+   (Method 1) Run cURL on Terminal to make a POST request on the    Terminal directly: type command with /api/calculate: 
     `
         curl -X POST http://localhost:3001/api/calculate \
         -H "Content-Type: application/json" \
